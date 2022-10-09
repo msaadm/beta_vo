@@ -1,0 +1,110 @@
+<form action="{{ route('admin.distributions.principals.store', [$distribution]) }}" method="POST" x-data="form()" @submit="submit">
+    @csrf
+    <div class="form-control w-full max-w-sm mb-5">
+        <label class="label">
+            <span class="label-text">Principal</span>
+        </label>
+        <select name="principal" required="required" class="select select-bordered w-full max-w-sm" @change="$store.principal.getProducts()" x-model="$store.principal.id">
+            <option value="" selected>Select Principal</option>
+            @foreach($principals as $principal)
+            <option value="{{ $principal->id }}">{{$principal->name}}</option>
+            @endforeach
+        </select>
+    </div>
+    <table class="table table-compact w-full">
+        <thead>
+        <tr>
+            <th>Product</th>
+            <th>Opening Balance</th>
+            <th>Batch#</th>
+            <th>Manufacturing Date</th>
+            <th>Expiry Date</th>
+            <th>Trade Price</th>
+        </tr>
+        </thead>
+        <tbody>
+        <template x-for="(product, index) in $store.principal.products">
+            <tr x-bind:class="invalid_rows.includes(index) && 'invalid-row font-bold'" >
+                <td x-html="getProductText(product)"></td>
+                <td><input type="number" name="opening_balance[]" min="1" step="1" placeholder="Opening Balance" class="input input-bordered w-full max-w-sm" /></td>
+                <td><input type="text" name="batch_no[]" minlength="3" placeholder="Batch No." class="input input-bordered w-full max-w-sm" /></td>
+                <td><input type="date" name="manufacturing_date[]" class="input input-bordered w-full max-w-sm" /></td>
+                <td><input type="date" name="expiry_date[]" class="input input-bordered w-full max-w-sm" /></td>
+                <td><input type="number" name="trade_price[]" min="1" step="1" placeholder="Trade Price" class="input input-bordered w-full max-w-sm" /></td>
+            </tr>
+        </template>
+        </tbody>
+    </table>
+
+    <div x-show="invalid_rows.length" class="alert alert-error shadow-lg mt-5">
+        <div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Error! One of the highlighted rows has missing data. Fill All fields, or remove values from all cells for that row(s).</span>
+        </div>
+    </div>
+
+    <div class="mt-5">
+        <a href="{{ route('admin.distributions.principals.index', [$distribution]) }}">
+            <button class="btn" type="button">Cancel</button>
+        </a>
+        <button class="btn btn-primary">Connect Principal</button>
+    </div>
+    <script>
+        function getProductText(product) {
+            return '<strong>'+product.name+'</strong><br/>' +
+            '<strong>Generic: </strong>'+product.generic_name+'<br/>' +
+            '<strong>Strength: </strong>'+product.strength+'<br/>' +
+            '<strong>Carton: </strong>'+product.pack_size+' x '+product.carton_size+'</strong>';
+        }
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('principal', {
+                id: null,
+                products: [],
+                getProducts() {
+                    fetch('/principals/'+this.id+'/products/json')
+                        .then((response) => response.json())
+                        .then((data) => {
+                            console.log(data)
+                            this.products = data.products
+                        });
+                }
+            })
+        });
+
+        window.form = () => {
+            return {
+                invalid_rows: [],
+                submit: function (event) {
+                    this.invalid_rows = [];
+                    // console.log(this.$el.querySelectorAll("tr td input"));
+                    this.tr = [...this.$el.querySelectorAll("tbody tr")];
+                    this.tr.map((tr, tr_id) => {
+                        console.log(tr_id)
+                        let inputs = Array.from(tr.querySelectorAll("input"));
+
+                        // console.log(inputs.length);
+
+                        let filled_inputs = inputs.filter((input) => input.value != "")
+                        console.log("filled_inputs",filled_inputs)
+
+                        if(filled_inputs.length === 0 || filled_inputs.length === 5){
+                            // It's absolutely Fine
+                        } else {
+                            event.preventDefault();
+                            this.invalid_rows.push(tr_id)
+                        }
+                    })
+                }
+            }
+
+        }
+    </script>
+</form>
+
+<style>
+    .invalid-row td{
+        background: #F87272;
+    }
+</style>
+
